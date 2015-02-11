@@ -1,0 +1,59 @@
+
+--全量用户表， 增量用户表
+--触发器： 当增量用户表有数据时，就MERGE合并增量表和全量表中的记录(有重复的update)
+--author: xiechengmin  2013-01-05
+
+CREATE OR REPLACE TRIGGER trig_raloader_subscriber
+  AFTER 
+    INSERT
+  ON RA_TMP_SUBSCRIBER_ST_201211
+BEGIN
+  CASE
+    WHEN INSERTING THEN
+       DBMS_OUTPUT.PUT_LINE('merging..');
+  
+       MERGE INTO RA_SUBSCRIBER_ST_201211 D
+       USING RA_TMP_SUBSCRIBER_ST_201211 S ON (D.SUBSID = S.SUBSID)
+       WHEN MATCHED THEN 
+         UPDATE SET 
+            D.ACCTID = S.ACCTID, 
+            D.SERVNUMBER = S.SERVNUMBER, 
+            D.BRAND = S.BRAND, 
+            D.ACTIVE = S.ACTIVE, 
+            D.STATUS = S.STATUS
+       WHEN NOT MATCHED THEN 
+         INSERT (D.SUBSID, D.ACCTID, D.SERVNUMBER, D.BRAND, D.ACTIVE, D.STATUS)
+         VALUES (S.SUBSID, S.ACCTID, S.SERVNUMBER, S.BRAND, S.ACTIVE, S.STATUS);
+         
+       DELETE  FROM RA_TMP_SUBSCRIBER_ST_201211;
+         
+  END CASE;
+END;
+/
+
+
+
+--增量表 RA_TMP_ 开头
+create table RA_TMP_SUBSCRIBER_ST_201211
+(
+SUBSID  NUMBER(14)             ,
+ACCTID  NUMBER(14)             ,
+SERVNUMBER  VARCHAR2(20)       ,
+BRAND   VARCHAR2(16)           ,
+ACTIVE  NUMBER(1)              ,
+STATUS  VARCHAR2(16)
+);
+
+--全量表RA_ 开头
+create table RA_SUBSCRIBER_ST_201211
+(
+SUBSID  NUMBER(14)             ,
+ACCTID  NUMBER(14)             ,
+SERVNUMBER  VARCHAR2(20)       ,
+BRAND   VARCHAR2(16)           ,
+ACTIVE  NUMBER(1)              ,
+STATUS  VARCHAR2(16)
+);
+
+--insert into RA_TMP_SUBSCRIBER_ST_201211 values(7544013959263, 754401395926, '13478932293', 'brandszx',  3, 'US33');
+--select to_char(D.SUBSID), to_char(D.ACCTID), D.SERVNUMBER, D.BRAND, D.ACTIVE, D.STATUS from RA_SUBSCRIBER_ST_201211 D;
